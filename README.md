@@ -1,76 +1,211 @@
-# Bitrefill eSIM Scraper
+# Bitrefill eSIM Scraper API
 
 An API-based scraper to extract eSIM card information from Bitrefill, including:
-- **Works in**: Countries where the eSIM works
+
+- **Countries**: Countries where the eSIM works
 - **Plans**: Available data plans (e.g., 1GB 7 Days, 10GB 30 Days)
 - **Prices**: Price for each plan
 
-## Requirements
+## Features
 
-- Python 3.7+
-- requests library
+- 🚀 FastAPI-based REST API
+- 🔄 Automatic caching of scraped data
+- 🌍 Filter eSIMs by country
+- 📊 Structured JSON responses
+- 🔍 Real-time scraping with Playwright
 
 ## Installation
 
-1. Install dependencies:
+### Prerequisites
+
+- Python 3.8 or higher
+- pip
+
+### Setup
+
+1. Clone or download this repository
+
+2. Install Python dependencies:
 ```bash
 pip install -r requirements.txt
 ```
 
+3. Install Playwright browsers:
+```bash
+playwright install chromium
+```
+
 ## Usage
 
-Run the API scraper (recommended - faster and more reliable):
+### Start the API Server
+
 ```bash
-python api_scraper.py
+python main.py
 ```
 
-Or use the Selenium-based scraper (slower, but works if API changes):
+Or using uvicorn directly:
 ```bash
-python scraper.py
+uvicorn main:app --reload --host 0.0.0.0 --port 8000
 ```
 
-The API scraper will:
-1. Fetch eSIM products from Bitrefill's API
-2. For each product, extract:
-   - Product name
-   - URL
-   - Countries where it works
-   - Available plans
-   - Prices for each plan
-3. Save results to `bitrefill_esims.json`
+The API will be available at `http://localhost:8000`
 
-## Output
+### API Endpoints
 
-The results are saved in JSON format:
+#### Get All eSIM Products
+
+```bash
+GET /esims
+```
+
+**Query Parameters:**
+- `force_refresh` (boolean, optional): Force a fresh scrape instead of using cache
+
+**Example:**
+```bash
+curl http://localhost:8000/esims
+```
+
+**Response:**
 ```json
-[
-  {
-    "name": "eSIM North America",
-    "url": "https://www.bitrefill.com/us/en/esims/bitrefill-esim-north-america/",
-    "works_in": ["USA", "Canada", "Mexico"],
-    "plans": [
-      {
-        "plan": "1GB, 7 Days",
-        "price": "$6.27"
-      },
-      {
-        "plan": "2GB, 15 Days",
-        "price": "$10.50"
-      }
-    ]
-  }
-]
+{
+  "products": [
+    {
+      "country": "Global eSIM",
+      "countries_covered": ["United States", "United Kingdom", "France", ...],
+      "plans": [
+        {
+          "name": "1GB 7 Days",
+          "data": "1GB",
+          "validity": "7 Days",
+          "price": "$9.99"
+        },
+        {
+          "name": "10GB 30 Days",
+          "data": "10GB",
+          "validity": "30 Days",
+          "price": "$29.99"
+        }
+      ]
+    }
+  ],
+  "total_count": 1
+}
 ```
 
-## Configuration
+#### Get eSIMs by Country
 
-You can modify the scraper behavior in `scraper.py`:
-- Set `headless=True` in `main()` to run without opening a browser window
-- Adjust delays and timeouts as needed
+```bash
+GET /esims/{country}
+```
+
+**Path Parameters:**
+- `country`: Country name (case-insensitive)
+
+**Query Parameters:**
+- `force_refresh` (boolean, optional): Force a fresh scrape instead of using cache
+
+**Example:**
+```bash
+curl http://localhost:8000/esims/United%20States
+```
+
+#### Refresh Cache
+
+```bash
+POST /refresh
+```
+
+Force refresh the cached data by scraping Bitrefill again.
+
+**Example:**
+```bash
+curl -X POST http://localhost:8000/refresh
+```
+
+#### Health Check
+
+```bash
+GET /health
+```
+
+Check if the API and scraper are running properly.
+
+**Example:**
+```bash
+curl http://localhost:8000/health
+```
+
+#### API Documentation
+
+Interactive API documentation is available at:
+- Swagger UI: `http://localhost:8000/docs`
+- ReDoc: `http://localhost:8000/redoc`
+
+## Project Structure
+
+```
+bitrefill-scapping-api/
+├── main.py              # FastAPI application
+├── scraper.py           # Bitrefill scraper implementation
+├── requirements.txt     # Python dependencies
+└── README.md           # This file
+```
+
+## How It Works
+
+1. The scraper uses Playwright to load the Bitrefill eSIM page
+2. It waits for the page to fully load (including JavaScript-rendered content)
+3. It extracts product information including:
+   - Product names (countries/regions)
+   - Countries covered by each eSIM
+   - Available data plans
+   - Prices for each plan
+4. The data is cached to avoid repeated scraping
+5. The API serves the data via REST endpoints
 
 ## Notes
 
-- The scraper uses Selenium to handle JavaScript-rendered content
-- Some pages may take time to load, so delays are included
-- If a product's price cannot be extracted, it will be `null` in the output
+- The scraper may take 30-60 seconds to complete a full scrape
+- Data is cached in memory to improve response times
+- Use the `/refresh` endpoint to update the cache
+- The scraper respects Bitrefill's robots.txt and rate limits
+
+## Troubleshooting
+
+### Playwright Installation Issues
+
+If you encounter issues installing Playwright browsers:
+
+```bash
+# On Linux/Mac
+playwright install chromium
+
+# On Windows
+python -m playwright install chromium
+```
+
+### Scraping Timeout
+
+If scraping times out, you can increase the timeout in `scraper.py`:
+
+```python
+await page.goto(self.base_url, wait_until="networkidle", timeout=120000)  # 120 seconds
+```
+
+### No Data Returned
+
+If no data is returned:
+1. Check if Bitrefill's website structure has changed
+2. Verify your internet connection
+3. Check the API logs for error messages
+4. Try forcing a refresh with `force_refresh=true`
+
+## License
+
+This project is for educational purposes. Please respect Bitrefill's terms of service and robots.txt when using this scraper.
+
+## Contributing
+
+Feel free to submit issues or pull requests to improve the scraper.
 
